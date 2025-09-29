@@ -1,0 +1,57 @@
+name: Deploy to Sandbox
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
+
+    - name: Build and push frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
+
+    - name: SSH into sandbox and deploy
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SANDBOX_WEBAPP_SERVER_HOST }}
+        username: ${{ secrets.SANDBOX_WEBAPP_USER }}
+        port: ${{ secrets.SANDBOX_WEBAPP_SERVER_PORT }}
+        key: ${{ secrets.SANDBOX_WEBAPP_SSH_KEY }}
+        script: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
+          docker pull ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
+          
+          docker stop webapp_backend || true
+          docker rm webapp_backend || true
+          docker run -d --name webapp_backend -p 8000:8000 --restart always \
+            ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
+          
+          docker stop webapp_frontend || true
+          docker rm webapp_frontend || true
+          docker run -d --name webapp_frontend -p 3000:80 --restart always \
+            ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
