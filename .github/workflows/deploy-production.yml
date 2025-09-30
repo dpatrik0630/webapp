@@ -35,7 +35,7 @@ jobs:
           no-cache: true
           tags: ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
           build-args: |
-            REACT_APP_API_BASE_URL=http://100.107.240.37:8000   # <-- ÁTÍRHATOD a saját Tailscale IP-dre
+            REACT_APP_API_BASE_URL=http://100.107.240.37:8000
 
   deploy:
     name: Deploy on Server (Self-hosted)
