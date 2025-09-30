@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import api from "./axiosConfig";
+import api from "./axiosConfig.js";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
@@ -11,23 +11,27 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-  
+
     const formData = new URLSearchParams();
     formData.append("username", username);
     formData.append("password", password);
-  
+
     try {
-      const response = await axios.post("http://100.94.37.110:8000/token", formData, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+      const res = await api.post("/token", formData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
-  
-      const token = response.data.access_token;
+
+      const token = res?.data?.access_token;
+      if (!token) throw new Error("Missing access_token in response");
+
       localStorage.setItem("token", token);
       navigate("/");
     } catch (err) {
-      setError("Invalid username or password");
+      const msg =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Invalid username or password";
+      setError(msg);
     }
   };
 
@@ -37,7 +41,10 @@ const Login = () => {
         <h2 className="text-2xl font-bold mb-6 text-center text-blue-600">
           Login to Áramút Bau 90 Kft. Monitoring System
         </h2>
-        {error && <div className="mb-4 text-red-500 text-sm text-center">{error}</div>}
+
+        {error && (
+          <div className="mb-4 text-red-500 text-sm text-center">{error}</div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -48,8 +55,10 @@ const Login = () => {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              autoComplete="username"
             />
           </div>
+
           <div>
             <label className="block text-gray-700 mb-1">Password</label>
             <input
@@ -58,6 +67,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              autoComplete="current-password"
             />
           </div>
 
