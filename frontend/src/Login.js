@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "./axiosConfig.js";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
@@ -17,10 +17,8 @@ const Login = () => {
     formData.append("password", password);
   
     try {
-      const response = await axios.post("http://100.94.37.110:8000/token", formData, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+      const response = await api.post("/token", formData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
   
       const token = response.data.access_token;
