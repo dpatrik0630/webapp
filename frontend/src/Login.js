@@ -17,9 +17,7 @@ const Login = () => {
     formData.append("password", password);
   
     try {
-      const response = await api.post("/token", formData, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      });
+      await api.post("/token", formData, { headers: { "Content-Type": "application/x-www-form-urlencoded" }});
   
       const token = response.data.access_token;
       localStorage.setItem("token", token);
