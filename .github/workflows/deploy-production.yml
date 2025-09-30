@@ -15,8 +15,6 @@ jobs:
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      # --- BACKEND build & push ---
-      # FONTOS: a requirements.txt legyen a backend/ mappában
       - name: Build & push backend
         uses: docker/build-push-action@v6
         with:
@@ -27,7 +25,6 @@ jobs:
           no-cache: true
           tags: ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
 
-      # --- FRONTEND build & push ---
       - name: Build & push frontend
         uses: docker/build-push-action@v6
         with:
@@ -63,13 +60,12 @@ jobs:
           docker pull ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
           docker pull ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
 
-      # Verifikáció: a backend image-ben tényleg benne van-e a python-multipart
       - name: Verify python-multipart in backend image
         run: |
           docker run --rm ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest python - <<'PY'
-import pkgutil, sys
-sys.exit(0 if pkgutil.find_loader('multipart') else 1)
-PY
+          import pkgutil, sys
+          sys.exit(0 if pkgutil.find_loader('multipart') else 1)
+          PY
 
       - name: Run backend
         run: |
