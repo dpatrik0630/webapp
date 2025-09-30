@@ -66,7 +66,6 @@ const InverterPage = () => {
     fetchInverterData();
     fetchWeeklyAvgData();
     fetchInverterPerformance();
-    inverterPerformance();
 
     const fetchPlantName = async () => {
       try {
