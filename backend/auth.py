@@ -11,7 +11,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 10
 
 # Jelszó hashelés
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 auth_router = APIRouter()
@@ -23,7 +23,15 @@ def set_db_pool(pool):
     db_pool = pool
 
 # Hash validáció
-def verify_password(plain_password, hashed_password):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    # bcrypt azonosítók: $2a$, $2b$, $2y$
+    if isinstance(hashed_password, str) and hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+        pw_bytes = plain_password.encode("utf-8")
+        if len(pw_bytes) > 72:
+            pw_bytes = pw_bytes[:72]
+            # ha vágás multibájtos karakter közepébe esik, az 'ignore' eldobja a csonkot
+            plain_password = pw_bytes.decode("utf-8", errors="ignore")
+
     return pwd_context.verify(plain_password, hashed_password)
 
 # Token készítése

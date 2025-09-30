@@ -3,6 +3,7 @@ uvicorn[standard]
 python-multipart>=0.0.9
 asyncpg
 python-dotenv
-passlib[bcrypt]
 python-jose[cryptography]
 httpx
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
