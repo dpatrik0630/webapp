@@ -1,89 +1,88 @@
 name: Deploy to Production
 
 on:
-  workflow_dispatch:
-
-env:
-  REGISTRY: docker.io
-  IMAGE_BACKEND: dpatrik0630/webapp_backend
-  IMAGE_FRONTEND: dpatrik0630/webapp_frontend
-  TAG: latest
+  workflow_dispatch: {}
 
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: true
-
+  build:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- Build & Push backend image ---
+      - name: Docker login (Docker Hub)
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      # --- BACKEND build & push ---
+      # FONTOS: a requirements.txt legyen a backend/ mappában
       - name: Build & push backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          tags: ${{ env.IMAGE_BACKEND }}:${{ env.TAG }}
           push: true
           pull: true
           no-cache: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
 
-      # --- Build & Push frontend image ---
+      # --- FRONTEND build & push ---
       - name: Build & push frontend
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          tags: ${{ env.IMAGE_FRONTEND }}:${{ env.TAG }}
           push: true
           pull: true
           no-cache: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
 
-      # --- Docker login on server ---
-      - name: Docker login
+  deploy:
+    name: Deploy on Server (Self-hosted)
+    runs-on: self-hosted
+    needs: build
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: true
+    steps:
+      - name: Docker login (server)
         run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      # --- Stop old containers ---
-      - name: Stop old containers
+      - name: Stop old containers (if any)
         run: |
-          docker rm -f webapp_backend || true
+          docker rm -f webapp_backend  || true
           docker rm -f webapp_frontend || true
+          # ha bármi más fogja a portokat, szedd le:
           docker ps --filter "publish=8000" -q | xargs -r docker rm -f
           docker ps --filter "publish=3000" -q | xargs -r docker rm -f
 
-      # --- Pull latest images ---
       - name: Pull latest images
         run: |
-          docker pull ${{ env.IMAGE_BACKEND }}:${{ env.TAG }}
-          docker pull ${{ env.IMAGE_FRONTEND }}:${{ env.TAG }}
+          docker pull ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
+          docker pull ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
 
-      # --- Verify python-multipart is installed in backend image ---
-      - name: Verify backend image
+      # Verifikáció: a backend image-ben tényleg benne van-e a python-multipart
+      - name: Verify python-multipart in backend image
         run: |
-          docker run --rm ${{ env.IMAGE_BACKEND }}:${{ env.TAG }} python - <<'PY'
-          import pkgutil, sys
-          sys.exit(0 if pkgutil.find_loader('multipart') else 1)
-          PY
+          docker run --rm ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest python - <<'PY'
+import pkgutil, sys
+sys.exit(0 if pkgutil.find_loader('multipart') else 1)
+PY
 
-      # --- Run backend container ---
       - name: Run backend
         run: |
           docker run -d --name webapp_backend --restart=always \
             -p 8000:8000 \
-            ${{ env.IMAGE_BACKEND }}:${{ env.TAG }}
+            ${{ secrets.DOCKER_USERNAME }}/webapp_backend:latest
 
-      # --- Run frontend container ---
       - name: Run frontend
         run: |
           docker run -d --name webapp_frontend --restart=always \
             -p 3000:80 \
-            ${{ env.IMAGE_FRONTEND }}:${{ env.TAG }}
+            ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
 
-      # --- Show running containers ---
-      - name: Show containers
+      - name: Show running containers
         run: |
           docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"
