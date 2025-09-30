@@ -34,7 +34,7 @@ jobs:
           pull: true
           no-cache: true
           tags: ${{ secrets.DOCKER_USERNAME }}/webapp_frontend:latest
-          build-args: |
+        build-args: |
             REACT_APP_API_BASE_URL=http://100.107.240.37:8000
 
 
